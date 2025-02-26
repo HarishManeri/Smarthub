@@ -83,12 +83,12 @@ def admin_interface():
     st.write("Current Products")
     products = get_products()
     for row in products:
-                st.image(row[6], use_column_width=True)  # Image is the 7th column
+        st.image(row[6], use_column_width=True)  # Image is the 7th column
         st.write(f"**Product:** {row[0]}, **Price:** {row[1]}, **Available:** {row[2]}, **Quality:** {row[3]}, **Date of Produce:** {row[4]}, **Shelf Life:** {row[5]} days")
 
 # Function to display user interface
 def user_interface():
-    st.title("User  Interface")
+    st.title("User   Interface")
     
     st.subheader("Available Products")
     products = get_products()
@@ -99,13 +99,13 @@ def user_interface():
     selected_product = st.selectbox("Select a product", [row[0] for row in products])
     quantity = st.number_input("Quantity", min_value=1)
 
-    if st.button("Order"):
+        if st.button("Order"):
         st.success(f"You have ordered {quantity} of {selected_product}.")
 
 # Function for user authentication
 def login():
     st.title("Login")
-    role = st.selectbox("Login as", ["Admin", "User "])
+    role = st.selectbox("Login as", ["Admin", "User  "])
     username = st.text_input("Username")
     password = st.text_input("Password", type='password')
 
@@ -117,10 +117,10 @@ def login():
                 admin_interface()  # Redirect to admin interface
             else:
                 st.error("Incorrect admin credentials")
-        elif role == "User ":
+        elif role == "User  ":
             user = get_user(username)
             if user and user[1] == password:  # Check password
-                st.session_state.role = "User "
+                st.session_state.role = "User  "
                 st.success("Logged in as User")
                 user_interface()  # Redirect to user interface
             else:
@@ -136,7 +136,7 @@ def register_user():
         if get_user(username):
             st.error("Username already exists")
         else:
-            add_user(username, password, 'User ')  # Default role is User
+            add_user(username, password, 'User  ')  # Default role is User
             st.success("User  registered successfully!")
 
 # Function for admin registration
