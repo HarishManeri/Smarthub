@@ -4,7 +4,7 @@ import sqlite3
 from datetime import datetime
 
 # Connect to SQLite database (or create it if it doesn't exist)
-conn = sqlite3.connect('farm_goods.db')
+conn = sqlite3.connect('farm_goods.db', check_same_thread=False)
 c = conn.cursor()
 
 # Create tables if they don't exist
@@ -108,21 +108,16 @@ def login():
     password = st.text_input("Password", type='password')
     
     if st.button("Login"):
-        if role == "Admin":
-            if username == "admin" and password == "admin":
-                st.session_state.role = "Admin"
-                st.success("Logged in as Admin")
+        user = get_user(username)
+        if user and user[1] == password:
+            st.session_state.role = user[2]
+            st.success(f"Logged in as {user[2]}")
+            if user[2] == "Admin":
                 admin_interface()
             else:
-                st.error("Incorrect admin credentials")
-        else:
-            user = get_user(username)
-            if user and user[1] == password:
-                st.session_state.role = "User"
-                st.success("Logged in as User")
                 user_interface()
-            else:
-                st.error("User not found or incorrect password")
+        else:
+            st.error("Incorrect username or password")
 
 
 def register_user():
@@ -144,7 +139,7 @@ def register_admin():
     password = st.text_input("Admin Password", type='password')
     
     if st.button("Register Admin"):
-        if username == "admin":
+        if get_user(username):
             st.error("Admin username already exists")
         else:
             add_user(username, password, 'Admin')
