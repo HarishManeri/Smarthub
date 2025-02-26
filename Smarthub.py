@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
+import smtplib
+from email.mime.text import MIMEText
 from datetime import datetime
 
 # Connect to SQLite database (or create it if it doesn't exist)
@@ -28,7 +30,22 @@ CREATE TABLE IF NOT EXISTS products (
 )
 ''')
 
+c.execute('''
+CREATE TABLE IF NOT EXISTS orders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT,
+    product_name TEXT,
+    quantity INTEGER,
+    mobile TEXT,
+    address TEXT,
+    email TEXT,
+    status TEXT DEFAULT 'Pending'
+)
+''')
+
 conn.commit()
+
+ADMIN_EMAIL = "maneriharish21@gmail.com"
 
 # Initialize session state variables
 if "logged_in" not in st.session_state:
@@ -46,22 +63,46 @@ def add_user(username, password, role):
     except sqlite3.IntegrityError:
         st.error("Username already exists. Please choose a different username.")
 
-
 def get_user(username):
     c.execute("SELECT * FROM users WHERE username = ?", (username,))
     return c.fetchone()
-
 
 def add_product(product_name, price, available, quality, date_of_produce, shelf_life, image):
     c.execute("INSERT INTO products (product_name, price, available, quality, date_of_produce, shelf_life, image) VALUES (?, ?, ?, ?, ?, ?, ?)",
               (product_name, price, available, quality, date_of_produce, shelf_life, image))
     conn.commit()
 
-
 def get_products():
     c.execute("SELECT * FROM products")
     return c.fetchall()
 
+def add_order(username, product_name, quantity, mobile, address, email):
+    c.execute("INSERT INTO orders (username, product_name, quantity, mobile, address, email) VALUES (?, ?, ?, ?, ?, ?)",
+              (username, product_name, quantity, mobile, address, email))
+    conn.commit()
+    send_email(ADMIN_EMAIL, "New Order Received", f"User {username} has ordered {quantity} of {product_name}. Contact: {mobile}, Address: {address}, Email: {email}")
+    send_email(email, "Order Confirmation", f"Thank you {username} for ordering {quantity} of {product_name}. Your order will be processed soon.")
+
+def get_orders():
+    c.execute("SELECT * FROM orders")
+    return c.fetchall()
+
+def send_email(to_email, subject, body):
+    from_email = "your_email@gmail.com"  # Replace with your email
+    password = "your_password"  # Replace with your email password
+    
+    msg = MIMEText(body)
+    msg["Subject"] = subject
+    msg["From"] = from_email
+    msg["To"] = to_email
+    
+    try:
+        server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
+        server.login(from_email, password)
+        server.sendmail(from_email, [to_email], msg.as_string())
+        server.quit()
+    except Exception as e:
+        st.error(f"Error sending email: {e}")
 
 # Admin Interface
 def admin_interface():
@@ -83,13 +124,11 @@ def admin_interface():
             st.success("Product added successfully!")
         else:
             st.error("Please enter a product name.")
-
-    st.subheader("Current Products")
-    products = get_products()
-    for row in products:
-        st.image(row[6], use_column_width=True)
-        st.write(f"**Product:** {row[0]}, **Price:** {row[1]}, **Available:** {row[2]}, **Quality:** {row[3]}, **Date of Produce:** {row[4]}, **Shelf Life:** {row[5]} days")
-
+    
+    st.subheader("Orders Received")
+    orders = get_orders()
+    for order in orders:
+        st.write(f"**User:** {order[1]}, **Product:** {order[2]}, **Quantity:** {order[3]}, **Mobile:** {order[4]}, **Address:** {order[5]}, **Email:** {order[6]}, **Status:** {order[7]}")
 
 # User Interface
 def user_interface():
@@ -103,83 +142,33 @@ def user_interface():
     
     selected_product = st.selectbox("Select a product", [row[0] for row in products])
     quantity = st.number_input("Quantity", min_value=1)
+    mobile = st.text_input("Mobile Number")
+    address = st.text_area("Delivery Address")
+    email = st.text_input("Email")
     
     if st.button("Order"):
+        add_order(st.session_state.username, selected_product, quantity, mobile, address, email)
         st.success(f"You have ordered {quantity} of {selected_product}.")
-
-
-# Authentication Functions
-def login():
-    st.title("Login")
-    role = st.selectbox("Login as", ["Admin", "User"])
-    username = st.text_input("Username")
-    password = st.text_input("Password", type='password')
-    
-    if st.button("Login"):
-        user = get_user(username)
-        if user and user[1] == password:
-            st.session_state.logged_in = True
-            st.session_state.role = user[2]
-            st.session_state.username = username
-            st.success(f"Logged in as {user[2]}")
-            st.experimental_rerun()
-        else:
-            st.error("Incorrect username or password")
-
-
-# Function to navigate after login
-def navigate():
-    if st.session_state.logged_in:
-        if st.session_state.role == "Admin":
-            admin_interface()
-        else:
-            user_interface()
-    else:
-        login()
-
-
-def register_user():
-    st.title("User Registration")
-    username = st.text_input("Username")
-    password = st.text_input("Password", type='password')
-    
-    if st.button("Register"):
-        if get_user(username):
-            st.error("Username already exists")
-        else:
-            add_user(username, password, 'User')
-            st.success("User registered successfully!")
-
-
-def register_admin():
-    st.title("Admin Registration")
-    username = st.text_input("Admin Username")
-    password = st.text_input("Admin Password", type='password')
-    
-    if st.button("Register Admin"):
-        if get_user(username):
-            st.error("Admin username already exists")
-        else:
-            add_user(username, password, 'Admin')
-            st.success("Admin registered successfully!")
-
 
 # Main App Logic
 def main():
     st.set_page_config(page_title="Farm Goods Marketplace", layout="wide", initial_sidebar_state="expanded")
     
     st.sidebar.title("Navigation")
-    if st.session_state.logged_in:
-        navigate()
+    choice = st.sidebar.radio("Go to", ["Login", "User Registration", "Admin Registration", "Admin Interface", "User Interface"])
+    
+    if choice == "Login":
+        login()
+    elif choice == "User Registration":
+        register_user()
+    elif choice == "Admin Registration":
+        register_admin()
+    elif choice == "Admin Interface" and st.session_state.role == "Admin":
+        admin_interface()
+    elif choice == "User Interface" and st.session_state.logged_in:
+        user_interface()
     else:
-        choice = st.sidebar.radio("Go to", ["Login", "User Registration", "Admin Registration"])
-        if choice == "Login":
-            login()
-        elif choice == "User Registration":
-            register_user()
-        elif choice == "Admin Registration":
-            register_admin()
-
+        st.error("Unauthorized access")
 
 if __name__ == "__main__":
     main()
