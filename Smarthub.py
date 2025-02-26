@@ -55,7 +55,22 @@ if "role" not in st.session_state:
 if "username" not in st.session_state:
     st.session_state.username = ""
 
-# Database Functions
+def login():
+    st.title("Login")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type='password')
+    role = st.selectbox("Login as", ["Admin", "User"])
+    
+    if st.button("Login"):
+        user = get_user(username)
+        if user and user[1] == password and user[2] == role:
+            st.session_state.logged_in = True
+            st.session_state.username = username
+            st.session_state.role = role
+            st.experimental_rerun()
+        else:
+            st.error("Invalid username, password, or role")
+
 def add_user(username, password, role):
     try:
         c.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", (username, password, role))
@@ -88,8 +103,8 @@ def get_orders():
     return c.fetchall()
 
 def send_email(to_email, subject, body):
-    from_email = "your_email@gmail.com"  # Replace with your email
-    password = "your_password"  # Replace with your email password
+    from_email = "your_email@gmail.com"
+    password = "your_password"
     
     msg = MIMEText(body)
     msg["Subject"] = subject
@@ -104,7 +119,6 @@ def send_email(to_email, subject, body):
     except Exception as e:
         st.error(f"Error sending email: {e}")
 
-# Admin Interface
 def admin_interface():
     st.title("Admin Interface")
     st.subheader("Manage Products")
@@ -130,7 +144,6 @@ def admin_interface():
     for order in orders:
         st.write(f"**User:** {order[1]}, **Product:** {order[2]}, **Quantity:** {order[3]}, **Mobile:** {order[4]}, **Address:** {order[5]}, **Email:** {order[6]}, **Status:** {order[7]}")
 
-# User Interface
 def user_interface():
     st.title("User Interface")
     st.subheader("Available Products")
@@ -150,19 +163,13 @@ def user_interface():
         add_order(st.session_state.username, selected_product, quantity, mobile, address, email)
         st.success(f"You have ordered {quantity} of {selected_product}.")
 
-# Main App Logic
 def main():
     st.set_page_config(page_title="Farm Goods Marketplace", layout="wide", initial_sidebar_state="expanded")
-    
     st.sidebar.title("Navigation")
-    choice = st.sidebar.radio("Go to", ["Login", "User Registration", "Admin Registration", "Admin Interface", "User Interface"])
+    choice = st.sidebar.radio("Go to", ["Login", "Admin Interface", "User Interface"])
     
     if choice == "Login":
         login()
-    elif choice == "User Registration":
-        register_user()
-    elif choice == "Admin Registration":
-        register_admin()
     elif choice == "Admin Interface" and st.session_state.role == "Admin":
         admin_interface()
     elif choice == "User Interface" and st.session_state.logged_in:
