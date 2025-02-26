@@ -124,15 +124,15 @@ def register_admin():
 
 # Main app logic
 def main():
+    # Set page configuration to hide Streamlit branding
+    st.set_page_config(page_title="Farm Goods Marketplace", page_icon=None, layout="wide", initial_sidebar_state="expanded")
+    
     st.sidebar.title("Navigation")
-    choice = st.sidebar.radio("Go to", ["Login", "User  Registration", "Admin Registration"])
+    choice = st.sidebar.radio("Go to", ["Login", "User   Registration", "Admin Registration"])
 
     if choice == "Login":
         login()
-    elif choice == "User  Registration":
+    elif choice == "User   Registration":
         register_user()
     elif choice == "Admin Registration":
         register_admin()
-
-if __name__ == "__main__":
-    main()
