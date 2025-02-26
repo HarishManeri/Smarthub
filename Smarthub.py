@@ -110,14 +110,24 @@ def login():
     if st.button("Login"):
         user = get_user(username)
         if user and user[1] == password:
+            st.session_state.logged_in = True
             st.session_state.role = user[2]
+            st.session_state.username = username
             st.success(f"Logged in as {user[2]}")
-            if user[2] == "Admin":
-                admin_interface()
-            else:
-                user_interface()
+            st.experimental_rerun()
         else:
             st.error("Incorrect username or password")
+
+
+# Function to navigate after login
+def navigate():
+    if "logged_in" in st.session_state and st.session_state.logged_in:
+        if st.session_state.role == "Admin":
+            admin_interface()
+        else:
+            user_interface()
+    else:
+        login()
 
 
 def register_user():
@@ -151,14 +161,16 @@ def main():
     st.set_page_config(page_title="Farm Goods Marketplace", layout="wide", initial_sidebar_state="expanded")
     
     st.sidebar.title("Navigation")
-    choice = st.sidebar.radio("Go to", ["Login", "User Registration", "Admin Registration"])
-    
-    if choice == "Login":
-        login()
-    elif choice == "User Registration":
-        register_user()
-    elif choice == "Admin Registration":
-        register_admin()
+    if "logged_in" in st.session_state and st.session_state.logged_in:
+        navigate()
+    else:
+        choice = st.sidebar.radio("Go to", ["Login", "User Registration", "Admin Registration"])
+        if choice == "Login":
+            login()
+        elif choice == "User Registration":
+            register_user()
+        elif choice == "Admin Registration":
+            register_admin()
 
 
 if __name__ == "__main__":
