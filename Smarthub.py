@@ -32,8 +32,11 @@ conn.commit()
 
 # Function to add a user to the database
 def add_user(username, password, role):
-    c.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", (username, password, role))
-    conn.commit()
+    try:
+        c.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", (username, password, role))
+        conn.commit()
+    except sqlite3.IntegrityError:
+        st.error("Username already exists. Please choose a different username.")
 
 # Function to get user from the database
 def get_user(username):
@@ -80,12 +83,12 @@ def admin_interface():
     st.write("Current Products")
     products = get_products()
     for row in products:
-        st.image(row[6], use_column_width=True)  # Image is the 7th column
+                st.image(row[6], use_column_width=True)  # Image is the 7th column
         st.write(f"**Product:** {row[0]}, **Price:** {row[1]}, **Available:** {row[2]}, **Quality:** {row[3]}, **Date of Produce:** {row[4]}, **Shelf Life:** {row[5]} days")
 
 # Function to display user interface
 def user_interface():
-    st.title("User   Interface")
+    st.title("User  Interface")
     
     st.subheader("Available Products")
     products = get_products()
@@ -99,7 +102,6 @@ def user_interface():
     if st.button("Order"):
         st.success(f"You have ordered {quantity} of {selected_product}.")
 
-# Function for user authentication
 # Function for user authentication
 def login():
     st.title("Login")
