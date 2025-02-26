@@ -54,7 +54,7 @@ def admin_interface():
 
 # Function to display user interface
 def user_interface():
-    st.title("User  Interface")
+    st.title("User   Interface")
     
     st.subheader("Available Products")
     for index, row in st.session_state.products.iterrows():
@@ -79,16 +79,16 @@ def login():
             if username == st.session_state.admin['username'] and password == st.session_state.admin['password']:
                 st.session_state.role = "Admin"
                 st.success("Logged in as Admin")
-                admin_interface()
+                admin_interface()  # Redirect to admin interface
             else:
-                                st.error("Incorrect admin credentials")
-        elif role == "User  ":
+                st.error("Incorrect admin credentials")
+        elif role == "User ":
             if username in st.session_state.users['Username'].values:
                 user_password = st.session_state.users.loc[st.session_state.users['Username'] == username, 'Password'].values[0]
                 if password == user_password:
-                    st.session_state.role = "User  "
+                    st.session_state.role = "User "
                     st.success("Logged in as User")
-                    user_interface()
+                    user_interface()  # Redirect to user interface
                 else:
                     st.error("Incorrect password")
             else:
@@ -104,7 +104,7 @@ def register_user():
         if username in st.session_state.users['Username'].values:
             st.error("Username already exists")
         else:
-            new_user = pd.DataFrame([[username, password, 'User  ']], columns=['Username', 'Password', 'Role'])
+            new_user = pd.DataFrame([[username, password, 'User ']], columns=['Username', 'Password', 'Role'])
             st.session_state.users = pd.concat([st.session_state.users, new_user], ignore_index=True)
             st.success("User  registered successfully!")
 
@@ -128,11 +128,14 @@ def main():
     st.set_page_config(page_title="Farm Goods Marketplace", page_icon=None, layout="wide", initial_sidebar_state="expanded")
     
     st.sidebar.title("Navigation")
-    choice = st.sidebar.radio("Go to", ["Login", "User   Registration", "Admin Registration"])
+    choice = st.sidebar.radio("Go to", ["Login", "User  Registration", "Admin Registration"])
 
     if choice == "Login":
         login()
-    elif choice == "User   Registration":
+    elif choice == "User  Registration":
         register_user()
     elif choice == "Admin Registration":
         register_admin()
+
+if __name__ == "__main__":
+    main()
