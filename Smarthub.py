@@ -67,7 +67,7 @@ def login():
             st.session_state.logged_in = True
             st.session_state.username = username
             st.session_state.role = role
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Invalid username, password, or role")
 
