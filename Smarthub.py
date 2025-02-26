@@ -30,6 +30,14 @@ CREATE TABLE IF NOT EXISTS products (
 
 conn.commit()
 
+# Initialize session state variables
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+if "role" not in st.session_state:
+    st.session_state.role = None
+if "username" not in st.session_state:
+    st.session_state.username = ""
+
 # Database Functions
 def add_user(username, password, role):
     try:
@@ -121,7 +129,7 @@ def login():
 
 # Function to navigate after login
 def navigate():
-    if "logged_in" in st.session_state and st.session_state.logged_in:
+    if st.session_state.logged_in:
         if st.session_state.role == "Admin":
             admin_interface()
         else:
@@ -161,7 +169,7 @@ def main():
     st.set_page_config(page_title="Farm Goods Marketplace", layout="wide", initial_sidebar_state="expanded")
     
     st.sidebar.title("Navigation")
-    if "logged_in" in st.session_state and st.session_state.logged_in:
+    if st.session_state.logged_in:
         navigate()
     else:
         choice = st.sidebar.radio("Go to", ["Login", "User Registration", "Admin Registration"])
