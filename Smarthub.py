@@ -1,17 +1,55 @@
 import streamlit as st
 import pandas as pd
+import sqlite3
 from datetime import datetime
 
-# Initialize session state for products and users
-if 'products' not in st.session_state:
-    st.session_state.products = pd.DataFrame(columns=['Product', 'Price', 'Available', 'Quality', 'Date of Produce', 'Shelf Life', 'Image'])
+# Connect to SQLite database (or create it if it doesn't exist)
+conn = sqlite3.connect('farm_goods.db')
+c = conn.cursor()
 
-if 'users' not in st.session_state:
-    st.session_state.users = pd.DataFrame(columns=['Username', 'Password', 'Role'])
+# Create tables if they don't exist
+c.execute('''
+CREATE TABLE IF NOT EXISTS users (
+    username TEXT PRIMARY KEY,
+    password TEXT,
+    role TEXT
+)
+''')
 
-# Initialize admin credentials
-if 'admin' not in st.session_state:
-    st.session_state.admin = {'username': 'admin', 'password': 'admin'}
+c.execute('''
+CREATE TABLE IF NOT EXISTS products (
+    product_name TEXT PRIMARY KEY,
+    price REAL,
+    available INTEGER,
+    quality TEXT,
+    date_of_produce DATE,
+    shelf_life INTEGER,
+    image BLOB
+)
+''')
+
+conn.commit()
+
+# Function to add a user to the database
+def add_user(username, password, role):
+    c.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", (username, password, role))
+    conn.commit()
+
+# Function to get user from the database
+def get_user(username):
+    c.execute("SELECT * FROM users WHERE username = ?", (username,))
+    return c.fetchone()
+
+# Function to add a product to the database
+def add_product(product_name, price, available, quality, date_of_produce, shelf_life, image):
+    c.execute("INSERT INTO products (product_name, price, available, quality, date_of_produce, shelf_life, image) VALUES (?, ?, ?, ?, ?, ?, ?)",
+              (product_name, price, available, quality, date_of_produce, shelf_life, image))
+    conn.commit()
+
+# Function to get all products from the database
+def get_products():
+    c.execute("SELECT * FROM products")
+    return c.fetchall()
 
 # Function to display admin interface
 def admin_interface():
@@ -31,42 +69,37 @@ def admin_interface():
     product_image = st.file_uploader("Upload Product Image", type=["jpg", "jpeg", "png"])
 
     if st.button("Add Product"):
-        if product_name in st.session_state.products['Product'].values:
-            st.session_state.products.loc[st.session_state.products['Product'] == product_name, 'Price'] = product_price
-            st.session_state.products.loc[st.session_state.products['Product'] == product_name, 'Available'] = product_available
-            st.session_state.products.loc[st.session_state.products['Product'] == product_name, 'Quality'] = product_quality
-            st.session_state.products.loc[st.session_state.products['Product'] == product_name, 'Date of Produce'] = date_of_produce
-            st.session_state.products.loc[st.session_state.products['Product'] == product_name, 'Shelf Life'] = shelf_life
-            if product_image is not None:
-                st.session_state.products.loc[st.session_state.products['Product'] == product_name, 'Image'] = product_image.read()
-            st.success("Product updated successfully!")
-        else:
-            new_product = pd.DataFrame([[product_name, product_price, product_available, product_quality, date_of_produce, shelf_life, product_image.read() if product_image is not None else None]], 
-                                        columns=st.session_state.products.columns)
-            st.session_state.products = pd.concat([st.session_state.products, new_product], ignore_index=True)
+        if product_name:
+            image_data = product_image.read() if product_image is not None else None
+            add_product(product_name, product_price, product_available, product_quality, date_of_produce, shelf_life, image_data)
             st.success("Product added successfully!")
+        else:
+            st.error("Please enter a product name.")
 
     # Display current products
     st.write("Current Products")
-    for index, row in st.session_state.products.iterrows():
-        st.image(row['Image'], use_column_width=True)
-        st.write(f"**Product:** {row['Product']}, **Price:** {row['Price']}, **Available:** {row['Available']}, **Quality:** {row['Quality']}, **Date of Produce:** {row['Date of Produce']}, **Shelf Life:** {row['Shelf Life']} days")
+    products = get_products()
+    for row in products:
+        st.image(row[6], use_column_width=True)  # Image is the 7th column
+        st.write(f"**Product:** {row[0]}, **Price:** {row[1]}, **Available:** {row[2]}, **Quality:** {row[3]}, **Date of Produce:** {row[4]}, **Shelf Life:** {row[5]} days")
 
 # Function to display user interface
 def user_interface():
     st.title("User   Interface")
     
     st.subheader("Available Products")
-    for index, row in st.session_state.products.iterrows():
-        st.image(row['Image'], use_column_width=True)
-        st.write(f"**Product:** {row['Product']}, **Price:** {row['Price']}, **Available:** {row['Available']}, **Quality:** {row['Quality']}, **Date of Produce:** {row['Date of Produce']}, **Shelf Life:** {row['Shelf Life']} days")
+    products = get_products()
+    for row in products:
+        st.image(row[6], use_column_width=True)  # Image is the 7th column
+        st.write(f"**Product:** {row[0]}, **Price:** {row[1]}, **Available:** {row[2]}, **Quality:** {row[3]}, **Date of Produce:** {row[4]}, **Shelf Life:** {row[5]} days")
     
-    selected_product = st.selectbox("Select a product", st.session_state.products['Product'])
+    selected_product = st.selectbox("Select a product", [row[0] for row in products])
     quantity = st.number_input("Quantity", min_value=1)
 
     if st.button("Order"):
         st.success(f"You have ordered {quantity} of {selected_product}.")
 
+# Function for user authentication
 # Function for user authentication
 def login():
     st.title("Login")
@@ -76,23 +109,20 @@ def login():
 
     if st.button("Login"):
         if role == "Admin":
-            if username == st.session_state.admin['username'] and password == st.session_state.admin['password']:
+            if username == "admin" and password == "admin":  # Default admin credentials
                 st.session_state.role = "Admin"
                 st.success("Logged in as Admin")
                 admin_interface()  # Redirect to admin interface
             else:
                 st.error("Incorrect admin credentials")
         elif role == "User ":
-            if username in st.session_state.users['Username'].values:
-                user_password = st.session_state.users.loc[st.session_state.users['Username'] == username, 'Password'].values[0]
-                if password == user_password:
-                    st.session_state.role = "User "
-                    st.success("Logged in as User")
-                    user_interface()  # Redirect to user interface
-                else:
-                    st.error("Incorrect password")
+            user = get_user(username)
+            if user and user[1] == password:  # Check password
+                st.session_state.role = "User "
+                st.success("Logged in as User")
+                user_interface()  # Redirect to user interface
             else:
-                st.error("User  not found")
+                st.error("User  not found or incorrect password")
 
 # Function for user registration
 def register_user():
@@ -101,11 +131,10 @@ def register_user():
     password = st.text_input("Password", type='password')
 
     if st.button("Register"):
-        if username in st.session_state.users['Username'].values:
+        if get_user(username):
             st.error("Username already exists")
         else:
-            new_user = pd.DataFrame([[username, password, 'User ']], columns=['Username', 'Password', 'Role'])
-            st.session_state.users = pd.concat([st.session_state.users, new_user], ignore_index=True)
+            add_user(username, password, 'User ')  # Default role is User
             st.success("User  registered successfully!")
 
 # Function for admin registration
@@ -115,11 +144,10 @@ def register_admin():
     password = st.text_input("Admin Password", type='password')
 
     if st.button("Register Admin"):
-        if username == st.session_state.admin['username']:
+        if username == "admin":
             st.error("Admin username already exists")
         else:
-            st.session_state.admin['username'] = username
-            st.session_state.admin['password'] = password
+            add_user(username, password, 'Admin')  # Set role as Admin
             st.success("Admin registered successfully!")
 
 # Main app logic
